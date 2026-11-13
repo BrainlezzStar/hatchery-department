@@ -305,6 +305,38 @@ body.hunt-page #back-home {
     height: min(94vw, 78dvh);
   }
 }
+
+/* Keep our giant moon inside its observatory */
+
+body.hunt-page .hunt.selected {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+body.hunt-page .buttons {
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+body.hunt-page button[data-act="plus"] {
+  width: min(100%, 85vw, 65dvh);
+  height: auto;
+  aspect-ratio: 1 / 1;
+  max-width: 100%;
+  max-height: none;
+  flex-shrink: 1;
+  box-sizing: border-box;
+  margin: 12px auto;
+}
+
+body.hunt-page .buttons button:not([data-act="plus"]) {
+  width: min(100%, 280px);
+}
+
 </style>
 
 <script>
