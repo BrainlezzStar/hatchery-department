@@ -186,5 +186,191 @@ e.target.value="";
 };
 render();
 </script>
+
+<style>
+/* Cozy Moon Observatory: dedicated hunt pages */
+
+body.hunt-page header {
+  padding: 8px 0;
+}
+
+body.hunt-page header h1 {
+  font-size: 1.3rem;
+}
+
+body.hunt-page header .sub {
+  display: none;
+}
+
+body.hunt-page .panel:not(:has(#hunts)),
+body.hunt-page #add,
+body.hunt-page #hunts + h3 {
+  display: none;
+}
+
+.hunt .open-hunt {
+  width: 100%;
+  margin-top: 10px;
+  padding: 16px;
+}
+
+body:not(.hunt-page) .hunt .buttons {
+  display: none;
+}
+
+body.hunt-page #hunts {
+  display: block;
+}
+
+body.hunt-page .hunt {
+  display: none;
+  text-align: center;
+  padding: 18px 10px;
+}
+
+body.hunt-page .hunt.selected {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+}
+
+body.hunt-page .hunthead {
+  width: 100%;
+  justify-content: center;
+  font-size: 1.4rem;
+}
+
+body.hunt-page .hunthead span {
+  display: none;
+}
+
+body.hunt-page .count {
+  font-size: clamp(3rem, 12vw, 5rem);
+}
+
+body.hunt-page .buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+}
+
+body.hunt-page button[data-act="plus"] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: min(94vw, 78dvh);
+  height: min(94vw, 78dvh);
+  max-width: 650px;
+  max-height: 650px;
+  border-radius: 50%;
+  border: 6px solid #e9d5ff;
+  background: #c2a6f4;
+  color: #17112a;
+  font-size: clamp(4rem, 17vw, 7rem);
+  box-shadow: 0 0 40px #c2a6f433;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  margin: 10px auto 20px;
+  order: -1;
+}
+
+body.hunt-page .buttons button:not([data-act="plus"]) {
+  min-width: 100px;
+}
+
+#back-home {
+  display: none;
+  margin-bottom: 14px;
+}
+
+body.hunt-page #back-home {
+  display: inline-block;
+}
+
+@media (max-width: 600px) {
+  body.hunt-page .wrap {
+    padding: 10px;
+  }
+
+  body.hunt-page .panel {
+    padding: 10px;
+  }
+
+  body.hunt-page button[data-act="plus"] {
+    width: min(94vw, 78dvh);
+    height: min(94vw, 78dvh);
+  }
+}
+</style>
+
+<script>
+/* Dedicated hunt pages, preserving existing data */
+
+const huntContainer = document.querySelector("#hunts");
+
+const backHome = document.createElement("button");
+backHome.id = "back-home";
+backHome.className = "secondary";
+backHome.textContent = "← Back to Headquarters";
+huntContainer.before(backHome);
+
+backHome.onclick = () => {
+  location.hash = "";
+  showHuntPage();
+};
+
+function currentHuntId() {
+  if (!location.hash.startsWith("#hunt/")) return null;
+  return decodeURIComponent(location.hash.slice(6));
+}
+
+function showHuntPage() {
+  const id = currentHuntId();
+  const huntExists = state.hunts.some(h => h.id === id);
+
+  document.body.classList.toggle("hunt-page", huntExists);
+
+  document.querySelectorAll("#hunts .hunt").forEach((card, i) => {
+    const hunt = state.hunts[i];
+    card.classList.toggle("selected", huntExists && hunt.id === id);
+
+    if (!card.querySelector(".open-hunt")) {
+      const open = document.createElement("button");
+      open.className = "open-hunt";
+      open.textContent = "🌙 Open Hunt";
+      open.onclick = () => {
+        location.hash = "hunt/" + encodeURIComponent(hunt.id);
+        showHuntPage();
+        window.scrollTo(0, 0);
+      };
+      card.append(open);
+    }
+
+    const openButton = card.querySelector(".open-hunt");
+    openButton.style.display = huntExists ? "none" : "block";
+  });
+
+  if (id && !huntExists) {
+    location.hash = "";
+  }
+}
+
+const originalRender = render;
+render = function() {
+  originalRender();
+  showHuntPage();
+};
+
+window.addEventListener("hashchange", () => {
+  showHuntPage();
+  window.scrollTo(0, 0);
+});
+
+showHuntPage();
+</script>
 </body>
 </html>
