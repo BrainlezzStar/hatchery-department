@@ -66,6 +66,21 @@ footer{text-align:center;padding:30px;color:#c9c1df}
 <input id="file" type="file" accept=".json" hidden>
 </section>
 
+<section class="panel" id="cloud-panel">
+<h2>☁️ Private Cloud Backup</h2>
+<p>Your hunts still save automatically on this phone. Cloud backups are manual, so nothing replaces your progress without your permission.</p>
+<p id="cloud-status" role="status" aria-live="polite">Connecting to Firebase…</p>
+<div class="buttons" id="cloud-auth-buttons">
+<button id="cloud-login" class="gold" type="button" disabled>Sign in with Google</button>
+<button id="cloud-logout" class="secondary" type="button" hidden>Sign out</button>
+</div>
+<div class="buttons" id="cloud-backup-buttons" hidden>
+<button id="cloud-save" class="gold" type="button">☁️ Back Up to Cloud</button>
+<button id="cloud-restore" class="secondary" type="button">↩ Restore from Cloud</button>
+</div>
+<small id="cloud-detail">Your existing Download Backup button still works, too.</small>
+</section>
+
 <footer>🌙 MAXIMUM SHINY™ 🖤💗</footer>
 </main>
 
@@ -403,6 +418,111 @@ window.addEventListener("hashchange", () => {
 });
 
 showHuntPage();
+</script>
+
+
+<script type="module">
+/* Optional manual Firebase backup. Existing localStorage counters remain authoritative. */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBhnHi3y0SZIGTmtQs5uZ-TiOTR8TwseGE",
+  authDomain: "pocket-moon-shiny-hq.firebaseapp.com",
+  projectId: "pocket-moon-shiny-hq",
+  storageBucket: "pocket-moon-shiny-hq.firebasestorage.app",
+  messagingSenderId: "718762627720",
+  appId: "1:718762627720:web:5b6fdf1c83ee4372cfc53d"
+};
+const status = document.getElementById("cloud-status");
+const detail = document.getElementById("cloud-detail");
+const login = document.getElementById("cloud-login");
+const logout = document.getElementById("cloud-logout");
+const controls = document.getElementById("cloud-backup-buttons");
+const backup = document.getElementById("cloud-save");
+const restore = document.getElementById("cloud-restore");
+let auth, db, activeUser = null;
+const setStatus = (message) => { status.textContent = message; };
+const errorMessage = (err) => {
+  if (err?.code === "auth/unauthorized-domain") return "This website needs to be added to Firebase Authentication → Settings → Authorized domains: brainlezzstar.github.io";
+  if (err?.code === "auth/popup-blocked") return "Google sign-in popup was blocked. Allow popups for this site or try opening it in Safari.";
+  if (err?.code === "permission-denied") return "Firebase denied access. Check that your Firestore rules were published for /users/{userId}/backups/{backupId}.";
+  return (err?.message || String(err));
+};
+function validBackup(data) {
+  return !!data && Array.isArray(data.hunts) && Array.isArray(data.archive) &&
+    data.hunts.every(h => typeof h.id === "string" && typeof h.name === "string" && typeof h.method === "string" && Number.isSafeInteger(h.count) && h.count >= 0) &&
+    data.archive.every(a => typeof a.name === "string" && typeof a.method === "string" && Number.isSafeInteger(a.count) && a.count >= 0);
+}
+function setBusy(busy) { login.disabled = busy; logout.disabled = busy; backup.disabled = busy; restore.disabled = busy; }
+try {
+  const app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
+  login.disabled = false;
+  login.addEventListener("click", async () => {
+    setBusy(true);
+    setStatus("Opening Google sign-in…");
+    try { await signInWithPopup(auth, new GoogleAuthProvider()); }
+    catch (err) { setStatus("Sign-in failed: " + errorMessage(err)); }
+    finally { setBusy(false); }
+  });
+  logout.addEventListener("click", async () => {
+    setBusy(true);
+    try { await signOut(auth); } catch (err) { setStatus("Sign-out failed: " + errorMessage(err)); }
+    finally { setBusy(false); }
+  });
+  onAuthStateChanged(auth, user => {
+    activeUser = user;
+    login.hidden = !!user;
+    logout.hidden = !user;
+    controls.hidden = !user;
+    setStatus(user ? "Signed in: " + (user.email || "Google account") : "Not signed in. Your local counters still work.");
+    detail.textContent = user ? "Cloud backups are saved only when you tap Back Up to Cloud. Restoring requires confirmation." : "Sign in to create or restore a private cloud backup.";
+  }, err => setStatus("Authentication error: " + errorMessage(err)));
+  backup.addEventListener("click", async () => {
+    const user = activeUser;
+    if (!user) return;
+    if (!confirm("Save a copy of your CURRENT local hunts and archive to Firebase? This replaces your previous cloud backup.")) return;
+    const snapshot = JSON.parse(JSON.stringify(state));
+    if (!validBackup(snapshot)) { setStatus("Backup stopped: invalid local data."); return; }
+    setBusy(true);
+    setStatus("Uploading your backup…");
+    try {
+      const timestamp = new Date().toISOString();
+      await setDoc(doc(db, "users", user.uid, "backups", "latest"), {data: snapshot, savedAt: timestamp});
+      setStatus("Cloud backup saved successfully!");
+      detail.textContent = "Last cloud backup: " + new Date(timestamp).toLocaleString();
+    } catch (err) { setStatus("Cloud backup failed: " + errorMessage(err)); }
+    finally { setBusy(false); }
+  });
+  restore.addEventListener("click", async () => {
+    const user = activeUser;
+    if (!user) return;
+    setBusy(true);
+    setStatus("Checking your cloud backup…");
+    try {
+      const result = await getDoc(doc(db, "users", user.uid, "backups", "latest"));
+      if (!result.exists()) { setStatus("No cloud backup found yet. Save one from your old phone first."); return; }
+      const record = result.data();
+      if (!validBackup(record.data)) { setStatus("Cloud backup has an invalid format; nothing was changed."); return; }
+      const date = record.savedAt ? new Date(record.savedAt).toLocaleString() : "unknown date";
+      if (!confirm("Cloud backup from " + date + ".\n\nRESTORE will REPLACE all local hunts and archive on this device. Make a Download Backup first if you need the current data. Continue?")) {
+        setStatus("Restore cancelled. Your local counts are unchanged."); return;
+      }
+      const previous = state;
+      const replacement = JSON.parse(JSON.stringify(record.data));
+      try { state = replacement; save(); }
+      catch (err) { state = previous; throw err; }
+      setStatus("Cloud backup restored! Your local counters are updated.");
+      detail.textContent = "Restored backup from " + date;
+    } catch (err) { setStatus("Cloud restore failed: " + errorMessage(err)); }
+    finally { setBusy(false); }
+  });
+} catch (err) {
+  setStatus("Cloud backup unavailable: " + errorMessage(err) + ". Local counters still work.");
+}
 </script>
 
 </body>
