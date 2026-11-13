@@ -1,0 +1,190 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pocket Moon Shiny Headquarters</title>
+<style>
+:root{font-family:system-ui,sans-serif;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;color:#f6f0ff;background:radial-gradient(ellipse at 80% 0%,#58477799,transparent 48%),#0c1026}
+main{max-width:900px;margin:auto;padding:20px}
+header{text-align:center;padding:35px 0}
+h1{color:#f5e9ff}
+h2{color:#e9d8ff}
+p,small{color:#c9c1df}
+.panel,.hunt{background:#1c2440;border:1px solid #8078aa;border-radius:18px;padding:18px;margin:14px 0}
+.hunt{background:linear-gradient(135deg,#303a65,#1a2340)}
+#hunts{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}
+.count{font-size:2.4rem;font-weight:800;color:#e9d5aa}
+button,input{font:inherit;border-radius:10px;padding:11px;margin:3px}
+button{border:0;background:#c2a6f4;color:#161126;font-weight:bold;cursor:pointer}
+button:disabled{opacity:.4}
+input{background:#111832;color:white;border:1px solid #8b84b4;max-width:100%}
+.secondary{background:#343c60;color:white}
+.gold{background:#e9d5aa}
+.danger{background:#653e55;color:white}
+.buttons{display:flex;flex-wrap:wrap;gap:5px}
+.archive-item{padding:12px;border-bottom:1px solid #544468}
+footer{text-align:center;padding:30px;color:#c9c1df}
+@media(max-width:500px){button{min-height:44px}}
+</style>
+</head>
+<body>
+<main>
+<header>
+<div style="font-size:40px">🌙 ✨ 🔭</div>
+<h1>Pocket Moon Shiny Headquarters™</h1>
+<p>✦ Cozy Moon Observatory ✦</p>
+<p>Every encounter counts. Every shiny has a story.</p>
+</header>
+
+<section class="panel">
+<h2>🌟 Active Hunts</h2>
+<div id="hunts"></div>
+<h3>Add a hunt</h3>
+<form id="add">
+<input id="name" placeholder="Pokémon name" required>
+<input id="method" placeholder="Method (resets, eggs...)" required>
+<input id="start" type="number" min="0" value="0">
+<button class="gold">Add Hunt</button>
+</form>
+</section>
+
+<section class="panel">
+<h2>🏆 Shiny Archive</h2>
+<p>Completed hunts from this point forward.</p>
+<div id="archive"></div>
+</section>
+
+<section class="panel">
+<h2>💾 Backups</h2>
+<p>Progress saves in this browser only. Download backups regularly. Data does not sync between devices.</p>
+<button id="export" class="gold">Download Backup</button>
+<button id="import" class="secondary">Restore Backup</button>
+<input id="file" type="file" accept=".json" hidden>
+</section>
+
+<footer>🌙 MAXIMUM SHINY™ 🖤💗</footer>
+</main>
+
+<script>
+const KEY="pocket-moon-shiny-hq-v1";
+const defaults=[
+["Rowlet","resets",35],
+["Chimchar","resets",56],
+["Midnight Girl (Trubbish)","hatches since Blue Moon",660],
+["Galarian Zigzagoon","encounters",4632]
+];
+const uid=()=>crypto.randomUUID();
+let state;
+try{state=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+if(!state||!Array.isArray(state.hunts)||!Array.isArray(state.archive)){
+state={hunts:defaults.map(([name,method,count])=>({
+id:uid(),name,method,count,history:[]
+})),archive:[]};
+}
+function save(){
+localStorage.setItem(KEY,JSON.stringify(state));
+render();
+}
+function safe(s){
+return String(s).replace(/[&<>"']/g,c=>({
+"&":"&amp;","<":"&lt;",">":"&gt;",
+'"':"&quot;","'":"&#39;"
+}[c]));
+}
+function render(){
+document.querySelector("#hunts").innerHTML=state.hunts.map(h=>`
+<div class="hunt">
+<strong>${safe(h.name)}</strong>
+<p>${safe(h.method)}</p>
+<div class="count">${h.count.toLocaleString()}</div>
+<small>📸 ${Math.floor(h.count/100)} photocards at 100 each</small>
+<div class="buttons">
+<button data-id="${h.id}" data-act="plus">+1</button>
+<button data-id="${h.id}" data-act="ten">+10</button>
+<button class="secondary" data-id="${h.id}" data-act="undo" ${h.history?.length?"":"disabled"}>Undo</button>
+<button class="gold" data-id="${h.id}" data-act="complete">✨ Shiny!</button>
+<button class="danger" data-id="${h.id}" data-act="remove">Remove</button>
+</div>
+</div>`).join("")||"<p>No active hunts yet.</p>";
+
+document.querySelector("#archive").innerHTML=state.archive.map(a=>`
+<div class="archive-item">
+<strong>✨ ${safe(a.name)}</strong>
+<p>${a.count.toLocaleString()} ${safe(a.method)} · ${safe(a.date)}</p>
+</div>`).join("")||"<p>The Hall of Fame awaits! 🌙</p>";
+}
+document.querySelector("#hunts").onclick=e=>{
+const b=e.target.closest("button[data-act]");
+if(!b)return;
+const h=state.hunts.find(x=>x.id===b.dataset.id);
+if(!h)return;
+const act=b.dataset.act;
+if(act==="plus"||act==="ten"){
+h.history??=[];
+h.history.push(h.count);
+if(h.history.length>100)h.history.shift();
+h.count+=act==="plus"?1:10;
+}
+if(act==="undo"){
+if(!h.history?.length)return;
+h.count=h.history.pop();
+}
+if(act==="remove"){
+if(!confirm("Remove this hunt?"))return;
+state.hunts=state.hunts.filter(x=>x.id!==h.id);
+}
+if(act==="complete"){
+if(!confirm("Archive this completed shiny hunt?"))return;
+state.archive.unshift({
+id:uid(),name:h.name,method:h.method,
+count:h.count,date:new Date().toLocaleDateString()
+});
+state.hunts=state.hunts.filter(x=>x.id!==h.id);
+}
+save();
+};
+document.querySelector("#add").onsubmit=e=>{
+e.preventDefault();
+const name=document.querySelector("#name").value.trim();
+const method=document.querySelector("#method").value.trim();
+const count=Number(document.querySelector("#start").value);
+if(!name||!method||!Number.isSafeInteger(count)||count<0)return;
+state.hunts.push({id:uid(),name,method,count,history:[]});
+e.target.reset();
+save();
+};
+document.querySelector("#export").onclick=()=>{
+const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+const url=URL.createObjectURL(blob);
+const a=document.createElement("a");
+a.href=url;
+a.download="pocket-moon-backup.json";
+a.click();
+setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
+document.querySelector("#import").onclick=()=>document.querySelector("#file").click();
+document.querySelector("#file").onchange=async e=>{
+const file=e.target.files[0];
+if(!file)return;
+try{
+const data=JSON.parse(await file.text());
+if(!Array.isArray(data.hunts)||!Array.isArray(data.archive)||
+!data.hunts.every(h=>typeof h.id==="string"&&typeof h.name==="string"&&Number.isSafeInteger(h.count)&&h.count>=0)||
+!data.archive.every(a=>typeof a.name==="string"&&Number.isSafeInteger(a.count)&&a.count>=0)){
+throw Error("Invalid backup");
+}
+if(confirm("Replace current data with this backup?")){
+state=data;
+save();
+}
+}catch(err){alert("Backup error: "+err.message)}
+e.target.value="";
+};
+render();
+</script>
+</body>
+</html>
