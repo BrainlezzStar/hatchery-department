@@ -86,12 +86,7 @@ footer{text-align:center;padding:30px;color:#c9c1df}
 
 <script>
 const KEY="pocket-moon-shiny-hq-v1";
-const defaults=[
-["Rowlet","resets",35],
-["Chimchar","resets",56],
-["Midnight Girl (Trubbish)","hatches since Blue Moon",660],
-["Galarian Zigzagoon","encounters",4632]
-];
+const defaults=[];
 const uid=()=>crypto.randomUUID();
 let state;
 try{state=JSON.parse(localStorage.getItem(KEY))}catch(e){}
