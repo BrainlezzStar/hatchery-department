@@ -383,6 +383,25 @@ body.hunt-page #back-home {
   }
 }
 
+/* Show each hunt's milestone progress prominently above its giant +1 button. */
+body.hunt-page .hunt.selected .milestone-track {
+  display: block;
+  width: min(100%, 540px);
+  height: 20px;
+  margin: 10px auto 0;
+  box-sizing: border-box;
+}
+body.hunt-page .hunt.selected .milestone-label {
+  display: block;
+  width: 100%;
+  margin: 0 auto 4px;
+  text-align: center;
+  color: #e9d5ff;
+}
+body.hunt-page .hunt.selected .buttons {
+  margin-top: 0;
+}
+
 /* Keep our giant moon inside its observatory */
 
 body.hunt-page .hunt.selected {
