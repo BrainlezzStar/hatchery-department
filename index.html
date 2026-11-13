@@ -27,6 +27,12 @@ input{background:#111832;color:white;border:1px solid #8b84b4;max-width:100%}
 .danger{background:#653e55;color:white}
 .buttons{display:flex;flex-wrap:wrap;gap:5px}
 .archive-item{padding:12px;border-bottom:1px solid #544468}
+.edit-line{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.edit-line p{margin:7px 0}
+.edit-mini{padding:5px 8px;margin:0;min-height:32px;font-size:.85rem;border:1px solid #8078aa;background:#343c60;color:#fff}
+.edit-mini:focus-visible{outline:3px solid #e9d5aa;outline-offset:2px}
+.count-line{margin:7px 0}
+.count-line .count{margin:0}
 footer{text-align:center;padding:30px;color:#c9c1df}
 @media(max-width:500px){button{min-height:44px}}
 </style>
@@ -108,14 +114,13 @@ return String(s).replace(/[&<>"']/g,c=>({
 function render(){
 document.querySelector("#hunts").innerHTML=state.hunts.map(h=>`
 <div class="hunt">
-<strong>${safe(h.name)}</strong>
-<p>${safe(h.method)}</p>
-<div class="count">${h.count.toLocaleString()}</div>
+<div class="edit-line"><strong>${safe(h.name)}</strong><button type="button" class="edit-mini" data-id="${h.id}" data-act="rename" aria-label="Edit name for ${safe(h.name)}" title="Edit hunt name">✏️</button></div>
+<div class="edit-line"><p>${safe(h.method)}</p><button type="button" class="edit-mini" data-id="${h.id}" data-act="edit-method" aria-label="Edit hunting method for ${safe(h.name)}" title="Edit hunting method">✏️</button></div>
+<div class="edit-line count-line"><div class="count">${h.count.toLocaleString()}</div><button type="button" class="edit-mini" data-id="${h.id}" data-act="edit-count" aria-label="Edit encounter count for ${safe(h.name)}" title="Edit encounter count">✏️</button></div>
 <small>📸 ${Math.floor(h.count/100)} photocards at 100 each</small>
 <div class="buttons">
 <button data-id="${h.id}" data-act="plus">+1</button>
 <button data-id="${h.id}" data-act="ten">+10</button>
-<button class="secondary" data-id="${h.id}" data-act="rename">✏️ Edit Name</button>
 <button class="secondary" data-id="${h.id}" data-act="undo" ${h.history?.length?"":"disabled"}>Undo</button>
 <button class="gold" data-id="${h.id}" data-act="complete">✨ Shiny!</button>
 <button class="danger" data-id="${h.id}" data-act="remove">Remove</button>
@@ -141,6 +146,30 @@ if(act==="rename"){
   if(!name){alert("Please enter a hunt name.");return;}
   if(name===h.name)return;
   h.name=name;
+  save();
+  return;
+}
+if(act==="edit-method"){
+  const updated=prompt("Edit hunting method:",h.method);
+  if(updated===null)return;
+  const method=updated.trim();
+  if(!method){alert("Please enter a hunting method.");return;}
+  if(method===h.method)return;
+  h.method=method;
+  save();
+  return;
+}
+if(act==="edit-count"){
+  const updated=prompt("Edit encounter count (0 or more):",String(h.count));
+  if(updated===null)return;
+  const raw=updated.trim();
+  if(!/^\d+$/.test(raw)){alert("Please enter a whole number of 0 or more.");return;}
+  const count=Number(raw);
+  if(!Number.isSafeInteger(count)){alert("That encounter count is too large.");return;}
+  if(count===h.count)return;
+  if(!confirm(`Change the encounter count from ${h.count.toLocaleString()} to ${count.toLocaleString()}? This clears the Undo history for this hunt.`))return;
+  h.count=count;
+  h.history=[];
   save();
   return;
 }
