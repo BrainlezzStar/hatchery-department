@@ -115,6 +115,7 @@ document.querySelector("#hunts").innerHTML=state.hunts.map(h=>`
 <div class="buttons">
 <button data-id="${h.id}" data-act="plus">+1</button>
 <button data-id="${h.id}" data-act="ten">+10</button>
+<button class="secondary" data-id="${h.id}" data-act="rename">✏️ Edit Name</button>
 <button class="secondary" data-id="${h.id}" data-act="undo" ${h.history?.length?"":"disabled"}>Undo</button>
 <button class="gold" data-id="${h.id}" data-act="complete">✨ Shiny!</button>
 <button class="danger" data-id="${h.id}" data-act="remove">Remove</button>
@@ -133,6 +134,16 @@ if(!b)return;
 const h=state.hunts.find(x=>x.id===b.dataset.id);
 if(!h)return;
 const act=b.dataset.act;
+if(act==="rename"){
+  const updated=prompt("Edit hunt name:",h.name);
+  if(updated===null)return;
+  const name=updated.trim();
+  if(!name){alert("Please enter a hunt name.");return;}
+  if(name===h.name)return;
+  h.name=name;
+  save();
+  return;
+}
 if(act==="plus"||act==="ten"){
 h.history??=[];
 h.history.push(h.count);
